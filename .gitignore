@@ -1,0 +1,22 @@
+# Configurações locais do editor/SO
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Logs, backups e dumps do banco (podem conter dados pessoais: CPF, dados bancários)
+*.log
+*.bak
+*.sql
+!migrations/*.sql
+# dados reais da instalação (nomes de guerra, assinatura)
+migrations/*.local.sql
+*.zip
+
+# Credenciais e configurações locais — nunca versionar
+.env
+
+# Dependências do Composer (geradas; enviadas ao servidor por FTP, não pelo git)
+/vendor/
+.phpunit.cache/

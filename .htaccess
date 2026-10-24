@@ -1,0 +1,22 @@
+# Sem listagem de diretórios
+Options -Indexes
+
+# Bloqueia repositórios git, .env e arquivos ocultos
+RedirectMatch 404 "(^|/)\.(git|svn|env|htpasswd)"
+
+# Pastas internas (código, templates, dependências, testes, migrações)
+RedirectMatch 404 "/(src|templates|vendor|tests|migrations)(/|$)"
+
+# Arquivos de projeto, documentação, backups e configuração (bootstrap.php não é uma página)
+<FilesMatch "(\.(md|sql|bak|log|ini|sh|json|lock|xml|dist)|^bootstrap\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Cabeçalhos de segurança
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "same-origin"
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+</IfModule>
