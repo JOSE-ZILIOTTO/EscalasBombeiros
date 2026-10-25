@@ -165,6 +165,7 @@ $plural = static fn (int $n, string $um, string $varios): string => $n . ' ' . (
             <?php endif; ?>
         </p>
     <?php endif; ?>
+    <p class="nota-valores"><a href="meus_dados.php">Meus dados</a> · <a href="privacidade.php">Aviso de privacidade</a></p>
 </main>
 </body>
 </html>

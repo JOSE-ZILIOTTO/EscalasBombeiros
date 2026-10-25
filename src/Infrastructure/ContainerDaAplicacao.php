@@ -8,6 +8,7 @@ use Closure;
 use DateTimeZone;
 use Escala\Application\Auth\Autenticador;
 use Escala\Application\Auth\Sessao;
+use Escala\Application\Bombeiro\AnonimizarBombeiros;
 use Escala\Application\Bombeiro\AtualizarBombeiro;
 use Escala\Application\Bombeiro\CadastrarBombeiro;
 use Escala\Application\Bombeiro\ConsultarBombeiros;
@@ -26,12 +27,14 @@ use Escala\Application\OrdemEscolha\CarregadorDaOrdem;
 use Escala\Application\OrdemEscolha\ConsultarOrdemDeEscolha;
 use Escala\Application\OrdemEscolha\DefinirInicioOrdem;
 use Escala\Application\Portal\ConsultarMeuPortal;
+use Escala\Application\Portal\ConsultarMeusDados;
 use Escala\Application\Relogio;
 use Escala\Application\Transacao;
 use Escala\Application\Usuario\AlterarSituacaoUsuario;
 use Escala\Application\Usuario\ConsultarUsuarios;
 use Escala\Application\Usuario\SalvarUsuario;
 use Escala\Domain\Bombeiro\BombeiroRepository;
+use Escala\Domain\Bombeiro\PoliticaDeRetencao;
 use Escala\Domain\Escala\CicloFixo;
 use Escala\Domain\Escala\EscalaDoFixo;
 use Escala\Domain\Escala\ExcecaoFixoRepository;
@@ -66,6 +69,7 @@ use Escala\Infrastructure\Persistencia\PdoPlantaoRepository;
 use Escala\Infrastructure\Persistencia\PdoTransacao;
 use Escala\Infrastructure\Persistencia\PdoTutorialRepository;
 use Escala\Infrastructure\Persistencia\PdoUsuarioRepository;
+use Escala\Infrastructure\Seguranca\CifraDeDados;
 use Escala\Infrastructure\Seguranca\LimitadorEmArquivo;
 use Escala\Infrastructure\Seguranca\SessaoNativa;
 use InvalidArgumentException;
@@ -105,6 +109,8 @@ final class ContainerDaAplicacao
                 $this->consultarBombeiros(),
                 new CadastrarBombeiro($this->bombeiros()),
                 new InativarBombeiro($this->transacao(), $this->bombeiros(), $this->carregadorDaOrdem()),
+                new AnonimizarBombeiros($this->transacao(), $this->bombeiros(), $this->retencao(), $this->relogio()),
+                $this->retencao()->anos,
                 $this->flash(),
                 $this->templates(),
             ),
@@ -149,6 +155,17 @@ final class ContainerDaAplicacao
                 $this->relogio(),
                 $this->templates(),
             ),
+            Pagina\MeusDadosController::class => new Pagina\MeusDadosController(
+                new ConsultarMeusDados($this->bombeiros(), $this->plantoes()),
+                $this->relogio(),
+                $this->templates(),
+            ),
+            Pagina\PrivacidadeController::class => new Pagina\PrivacidadeController(
+                $this->templates(),
+                $this->config->texto('PRIVACIDADE_CONTROLADOR') ?: 'Coordenação dos bombeiros civis (BC) da unidade',
+                $this->config->texto('PRIVACIDADE_CONTATO') ?: null,
+                $this->retencao()->anos,
+            ),
 
             Api\ConsultarDiaController::class => new Api\ConsultarDiaController(
                 new ConsultarDia($this->bombeiros(), $this->plantoes(), $this->excecoes(), $this->montadorDeQuadro(), $this->consultarOrdem()),
@@ -172,11 +189,23 @@ final class ContainerDaAplicacao
                 new DefinirInicioOrdem($this->transacao(), $this->carregadorDaOrdem()),
             ),
             Api\ConcluirTutorialController::class => new Api\ConcluirTutorialController($this->tutorial()),
+            Api\RevelarDadoPessoalController::class => new Api\RevelarDadoPessoalController($this->consultarBombeiros()),
             default => throw new InvalidArgumentException("Controller não registrado: {$classe}"),
         };
     }
 
     // --- Infraestrutura ---
+
+    public function conexaoSegura(): bool
+    {
+        return $this->conexaoSegura;
+    }
+
+    /** FORCAR_HTTPS=1 em produção: http:// vira https:// e o navegador passa a exigir HTTPS (HSTS). */
+    public function forcarHttps(): bool
+    {
+        return $this->config->inteiro('FORCAR_HTTPS', 0) === 1;
+    }
 
     public function logger(): LoggerInterface
     {
@@ -251,7 +280,13 @@ final class ContainerDaAplicacao
 
     public function bombeiros(): BombeiroRepository
     {
-        return $this->unico(BombeiroRepository::class, fn () => new PdoBombeiroRepository($this->pdo()));
+        return $this->unico(BombeiroRepository::class, fn () => new PdoBombeiroRepository($this->pdo(), $this->cifra()));
+    }
+
+    /** Exige CHAVE_DADOS: sem ela, CPF e dados bancários não podem ser lidos nem gravados. */
+    public function cifra(): CifraDeDados
+    {
+        return $this->unico(CifraDeDados::class, fn () => new CifraDeDados($this->config->textoObrigatorio('CHAVE_DADOS')));
     }
 
     public function plantoes(): PlantaoRepository
@@ -275,6 +310,13 @@ final class ContainerDaAplicacao
     }
 
     // --- Domínio e aplicação compartilhados ---
+
+    private function retencao(): PoliticaDeRetencao
+    {
+        return $this->unico(PoliticaDeRetencao::class, fn () => new PoliticaDeRetencao(
+            max(1, $this->config->inteiro('RETENCAO_DADOS_INATIVOS_ANOS', 5)),
+        ));
+    }
 
     private function cicloFixo(): CicloFixo
     {

@@ -19,6 +19,7 @@ $comCsrf = true;
 $ativo = 'escala';
 $colunaInicial = $mes->primeiroDia()->diaDaSemana();
 $celulasVazias = (7 - ($colunaInicial + $mes->quantidadeDeDias()) % 7) % 7;
+$diasDaSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -76,12 +77,12 @@ $celulasVazias = (7 - ($colunaInicial + $mes->quantidadeDeDias()) % 7) % 7;
                 <span><?= $v->etiquetaTurno(Turno::Integral) ?> integral</span>
                 <span><?= $v->etiquetaTurno(Turno::IntegralSubstituto) ?> substituto do Fixo</span>
             </div>
-            <span class="legenda"><span><span class="vaga vaga--livre">D 1</span> vagas de BC livres</span></span>
+            <span class="legenda legenda--vagas"><span><span class="vaga vaga--livre">D 1</span> vagas de BC livres</span></span>
         </div>
 
         <table class="calendario">
             <thead>
-                <tr><th>Dom</th><th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th></tr>
+                <tr><?php foreach ($diasDaSemana as $nomeDoDia): ?><th><?= $nomeDoDia ?></th><?php endforeach; ?></tr>
             </thead>
             <tbody>
                 <tr>
@@ -97,7 +98,10 @@ $celulasVazias = (7 - ($colunaInicial + $mes->quantidadeDeDias()) % 7) % 7;
                         ?>
                         <td class="<?= $classes ?>">
                             <div class="dia__topo">
-                                <span class="dia__numero"><?= $quadro->data->dia() ?></span>
+                                <span class="dia__data">
+                                    <span class="dia__semana"><?= $diasDaSemana[$quadro->data->diaDaSemana()] ?></span>
+                                    <span class="dia__numero"><?= $quadro->data->dia() ?></span>
+                                </span>
                                 <button type="button" class="dia__abrir btn-detalhes" data-date="<?= $data ?>" aria-label="Abrir dia <?= $v->dataBr($data) ?>" title="Detalhes e registro">
                                     <?= $v->icone('mais') ?>
                                 </button>

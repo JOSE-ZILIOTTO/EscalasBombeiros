@@ -52,6 +52,7 @@ $titulo = 'Entrar';
         </div>
 
         <p class="login__rodape">Esqueceu a senha? Peça ao administrador do sistema para redefini-la.</p>
+        <p class="login__rodape"><a href="privacidade.php">Aviso de privacidade</a></p>
     </div>
 </main>
 

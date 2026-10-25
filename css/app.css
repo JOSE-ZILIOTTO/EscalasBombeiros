@@ -461,8 +461,43 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--f
 .nota-valores { margin-top: 12px; font-size: 12px; color: var(--texto-3); }
 
 /* ==========================================================================
+   Dados pessoais (LGPD): campos sigilosos, "Meus dados" e aviso de privacidade
+   ========================================================================== */
+.sigiloso__atual {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    min-height: 36px; padding: 2px 4px 2px 10px;
+    border: 1px dashed var(--borda-forte); border-radius: var(--raio-pequeno);
+    background: var(--superficie-2);
+}
+.sigiloso__atual[hidden] { display: none; }
+.sigiloso__valor { flex: 1; min-width: 0; color: var(--texto-2); letter-spacing: .03em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sigiloso__valor.revelado { color: var(--texto); letter-spacing: normal; }
+
+.aviso--neutro { color: var(--texto-2); background: var(--superficie-2); border-color: var(--borda); }
+.aviso--alerta { color: var(--alerta); background: var(--alerta-suave); border-color: color-mix(in srgb, var(--alerta) 30%, transparent); }
+.aviso--acao { align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.selo--alerta { background: var(--alerta-suave); color: var(--alerta); }
+
+.dados { display: grid; grid-template-columns: minmax(140px, auto) 1fr; gap: 10px 20px; margin: 0; }
+.dados dt { color: var(--texto-2); font-size: 13px; }
+.dados dd { margin: 0; overflow-wrap: anywhere; }
+.dados__texto { white-space: pre-wrap; }
+.dados__sigilosos { margin: 0 20px 20px; padding: 12px 14px; border: 1px solid var(--borda); border-radius: var(--raio-pequeno); }
+.dados__sigilosos summary { cursor: pointer; color: var(--foco); font-weight: 550; }
+.dados__sigilosos[open] summary { margin-bottom: 12px; }
+
+.texto-longo { line-height: 1.65; }
+.texto-longo h2 { margin: 24px 0 8px; }
+.texto-longo h2:first-child { margin-top: 0; }
+.texto-longo p + p, .texto-longo ul + p { margin-top: 8px; }
+.texto-longo ul { margin: 8px 0 0; padding-left: 20px; }
+.texto-longo li + li { margin-top: 4px; }
+
+/* ==========================================================================
    Responsivo
    ========================================================================== */
+.dia__semana { display: none; }
+
 @media (max-width: 960px) {
     .barra-escala { grid-template-columns: 1fr; justify-items: center; }
     .grade--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -473,18 +508,106 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--f
     .topo__marca span { display: none; }
     .topo__nav a span { display: none; }
     .pagina { padding: 16px 12px; }
+    .cabecalho { align-items: flex-start; }
+    .cartao__titulo { flex-wrap: wrap; padding: 12px 16px; }
+    .cartao__corpo { padding: 16px; }
     .grade--2, .grade--4 { grid-template-columns: 1fr; }
     .ocupa-2 { grid-column: auto; }
-    .calendario td { height: 96px; padding: 4px; }
-    .ocupante__nome { display: none; }
-    .tabela th:nth-child(1), .tabela td:nth-child(1) { display: none; }
-    .tabela--plantoes th:nth-child(1), .tabela--plantoes td:nth-child(1) { display: table-cell; }
     .tabela--plantoes th, .tabela--plantoes td { padding-left: 10px; padding-right: 10px; }
     .so-largo { display: none; }
     .resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .resumo .indicador--destaque { grid-column: 1 / -1; }
     .indicador { padding: 14px; }
     .indicador__valor { font-size: 19px; }
+
+    /* abaixo de 16px o iOS aproxima a tela ao focar o campo */
+    input[type="text"], input[type="password"], input[type="date"], select, textarea { height: 40px; font-size: 16px; }
+    textarea { height: auto; }
+    .rodape-form { padding: 12px 16px; flex-wrap: wrap; }
+    .rodape-form .botao { flex: 1 1 auto; }
+
+    /* tabelas de cadastro viram cartões: uma linha por registro, rótulo ao lado do valor */
+    .tabela--cartoes, .tabela--cartoes tbody, .tabela--cartoes tr { display: block; }
+    .tabela--cartoes thead, .tabela--cartoes .num { display: none; }
+    .tabela--cartoes tr { padding: 12px 16px; border-bottom: 1px solid var(--borda); }
+    .tabela--cartoes tbody tr:last-child { border-bottom: 0; }
+    .tabela--cartoes td {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 3px 0; border: 0; text-align: right;
+    }
+    .tabela--cartoes td { justify-content: flex-end; gap: 6px; }
+    .tabela--cartoes td[data-rotulo]::before { content: attr(data-rotulo); margin-right: auto; color: var(--texto-3); font-size: 12px; text-align: left; }
+    .dados { grid-template-columns: 1fr; gap: 2px; }
+    .dados dd + dt { margin-top: 10px; }
+    .dados__sigilosos { margin: 0 16px 16px; }
+    .tabela--cartoes .tabela__titulo { display: block; margin-bottom: 4px; text-align: left; font-weight: 600; }
+    .tabela--cartoes .acoes { justify-content: stretch; gap: 8px; padding-top: 10px; }
+    .tabela--cartoes .acoes > * { flex: 1 1 0; }
+    .tabela--cartoes .acoes .botao { width: 100%; height: 36px; }
+    .form-linha > .botao { flex: 1 1 100%; height: 40px; }
+    .tabela--cartoes .acoes form { display: flex; }
+
+    /* escala: barra empilhada */
+    .barra-escala { gap: 14px; padding: 14px 16px; justify-items: stretch; }
+    .navegacao-mes { justify-content: space-between; }
+    .navegacao-mes h1 { min-width: 0; }
+    .ordem { display: grid; gap: 12px; justify-content: stretch; }
+    .ordem__item { display: grid; gap: 6px; }
+    .ordem__item select { width: 100%; }
+    .ordem__item:last-child { grid-template-columns: 1fr auto; align-items: center; }
+    .ordem__item:last-child .mudo { grid-column: 1 / -1; font-size: 12px; }
+    .barra-escala__acoes .botao { flex: 1; }
+    .legenda--vagas { white-space: nowrap; }
+
+    /* escala: o calendário vira uma lista de dias, com os nomes completos */
+    .cartao:has(> .calendario) { overflow: hidden; }
+    .calendario, .calendario tbody, .calendario tr { display: block; }
+    .calendario thead, .calendario .fora-do-mes { display: none; }
+    .calendario td {
+        display: grid; grid-template-columns: 44px minmax(0, 1fr) auto;
+        grid-template-areas: "data vagas abrir" "data ocupantes abrir";
+        gap: 6px 12px; align-items: start;
+        height: auto; padding: 12px 16px;
+        border-right: 0; border-bottom: 1px solid var(--borda);
+    }
+    .calendario tbody tr:last-child td { border-bottom: 1px solid var(--borda); }
+    .dia__topo { display: contents; }
+    .dia__data { grid-area: data; display: grid; justify-items: center; gap: 2px; }
+    .dia__semana { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-3); }
+    .dia__numero { font-size: 17px; }
+    .hoje .dia__numero { width: 30px; height: 30px; }
+    .vagas { grid-area: vagas; margin: 0; }
+    .ocupantes { grid-area: ocupantes; }
+    .ocupante { align-items: flex-start; font-size: 13px; }
+    .ocupante__nome { white-space: normal; }
+    .dia__abrir {
+        grid-area: abrir; align-self: center;
+        width: 40px; height: 40px;
+        border-color: var(--borda-forte); color: var(--texto); background: var(--superficie);
+    }
+
+    /* planilha: a tabela rola de lado; a coluna de nomes fica mais estreita */
+    .cabecalho .navegacao-mes { flex-wrap: wrap; }
+    /* .planilha na frente: as regras da tela da planilha vêm depois deste bloco */
+    .planilha .planilha__cabecalho { padding: 14px 16px; }
+    .planilha .planilha__cabecalho .legenda { margin-left: 0; }
+    .planilha .planilha__tabela .planilha__nome { min-width: 150px; max-width: 150px; padding: 4px 8px; white-space: normal; line-height: 1.3; }
+    .planilha .planilha__nome .turno { display: none; }
+    .planilha .planilha__linha-assinatura { width: min(280px, 100%); }
+
+    #toast-container { left: 12px; right: 12px; bottom: 12px; }
+    .toast { min-width: 0; max-width: none; }
+    .modal { padding-top: 16px; }
+    .modal__corpo { padding: 16px; }
+}
+
+@media (max-width: 420px) {
+    .topo { gap: 8px; }
+    .topo__acoes a span { display: none; }
+    .topo__acoes .botao:not(.botao--icone) { width: 36px; padding: 0; }
+    .turnos-botoes { grid-template-columns: 1fr; }
+    .cabecalho > .botao, .cabecalho > .navegacao-mes { width: 100%; }
+    .cabecalho .navegacao-mes .botao:not(.botao--icone) { flex: 1; }
 }
 
 .modal__corpo h3 { margin-bottom: 8px; }

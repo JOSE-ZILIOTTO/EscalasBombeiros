@@ -42,7 +42,7 @@ $bombeiroSelecionado = (int) $valor('bombeiro_id');
     <?php endif; ?>
 
     <section class="cartao">
-        <table class="tabela">
+        <table class="tabela tabela--cartoes">
             <thead>
                 <tr>
                     <th>Nome</th>
@@ -60,11 +60,11 @@ $bombeiroSelecionado = (int) $valor('bombeiro_id');
                     $ultimoAdmin = $u->ehAdminAtivo() && $adminsAtivos <= 1;
                     ?>
                     <tr class="<?= $u->ativo ? '' : 'linha-inativa' ?>">
-                        <td><?= $v->e($u->nome) ?><?php if ($ehVoce): ?> <span class="selo selo--neutro">você</span><?php endif; ?></td>
-                        <td class="mudo"><?= $v->e($u->login) ?></td>
-                        <td><?= $u->ehAdmin() ? '<span class="turno turno--fixo">Administrador</span>' : '<span class="turno turno--n">Bombeiro</span>' ?></td>
-                        <td class="mudo"><?= $u->bombeiroId === null ? '—' : $v->e($nomesDosBombeiros[$u->bombeiroId] ?? "#{$u->bombeiroId}") ?></td>
-                        <td><?= $u->ativo ? '<span class="selo selo--ok">Ativo</span>' : '<span class="selo">Inativo</span>' ?></td>
+                        <td class="tabela__titulo"><?= $v->e($u->nome) ?><?php if ($ehVoce): ?> <span class="selo selo--neutro">você</span><?php endif; ?></td>
+                        <td class="mudo" data-rotulo="Login"><?= $v->e($u->login) ?></td>
+                        <td data-rotulo="Perfil"><?= $u->ehAdmin() ? '<span class="turno turno--fixo">Administrador</span>' : '<span class="turno turno--n">Bombeiro</span>' ?></td>
+                        <td class="mudo" data-rotulo="Bombeiro"><?= $u->bombeiroId === null ? '—' : $v->e($nomesDosBombeiros[$u->bombeiroId] ?? "#{$u->bombeiroId}") ?></td>
+                        <td data-rotulo="Situação"><?= $u->ativo ? '<span class="selo selo--ok">Ativo</span>' : '<span class="selo">Inativo</span>' ?></td>
                         <td class="acoes">
                             <a class="botao botao--pequeno" href="gera_hash.php?editar=<?= (int) $u->id ?>"><?= $v->icone('editar') ?> Editar</a>
                             <?php if ($u->ativo): ?>

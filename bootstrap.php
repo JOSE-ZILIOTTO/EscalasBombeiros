@@ -26,7 +26,10 @@ $config = (new CarregadorDeEnv())->carregar(
     is_array($ambiente) ? $ambiente : [],
 );
 
-$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+// X-Forwarded-Proto: hospedagens que terminam o HTTPS num proxy entregam a requisição em http
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['SERVER_PORT'] ?? '') === '443')
+    || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
 
 return new Aplicacao(
     new ContainerDaAplicacao($config, __DIR__ . '/templates', $https),

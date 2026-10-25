@@ -6,10 +6,14 @@ declare(strict_types=1);
  * Barra superior. Incluída com require pelos templates.
  *
  * @var \Escala\Http\View\AjudanteDeView $v
- * @var string $ativo  item atual: escala | bombeiros | usuarios | portal
+ * @var string $ativo  item atual: escala | bombeiros | usuarios | portal | meus_dados
  */
-$itens = $ativo === 'portal'
-    ? ['portal' => ['portal_usuario.php', 'calendario', 'Minha escala']]
+$ehPortal = in_array($ativo, ['portal', 'meus_dados'], true);
+$itens = $ehPortal
+    ? [
+        'portal' => ['portal_usuario.php', 'calendario', 'Minha escala'],
+        'meus_dados' => ['meus_dados.php', 'escudo', 'Meus dados'],
+    ]
     : [
         'escala' => ['escala.php', 'calendario', 'Escala'],
         'bombeiros' => ['bombeiros.php', 'pessoas', 'Bombeiros'],
@@ -29,7 +33,7 @@ $itens = $ativo === 'portal'
         <?php endforeach; ?>
     </nav>
     <div class="topo__acoes" data-tutorial="acoes">
-        <?php if ($ativo !== 'portal'): ?>
+        <?php if (!$ehPortal): ?>
             <a class="botao botao--fantasma botao--icone" href="escala.php?tutorial=1" data-abrir-tutorial aria-label="Ver o tutorial" title="Como usar o sistema">
                 <?= $v->icone('ajuda') ?>
             </a>

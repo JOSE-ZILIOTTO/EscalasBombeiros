@@ -37,6 +37,15 @@ final readonly class Cpf
         return new self($valor);
     }
 
+    /** Para exibir sem expor o número inteiro: ***.456.789-** (mesmo formato usado pelo governo em publicações). */
+    public function mascarado(): string
+    {
+        if (preg_match('/^\d{3}\.(\d{3}\.\d{3})-\d{2}$/', $this->formatado, $partes) === 1) {
+            return "***.{$partes[1]}-**";
+        }
+        return '***'; // fora do padrão: não dá para saber que trecho é seguro mostrar
+    }
+
     public function igual(string $valor): bool
     {
         return trim($valor) === $this->formatado;

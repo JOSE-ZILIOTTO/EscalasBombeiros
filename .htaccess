@@ -4,8 +4,8 @@ Options -Indexes
 # Bloqueia repositórios git, .env e arquivos ocultos
 RedirectMatch 404 "(^|/)\.(git|svn|env|htpasswd)"
 
-# Pastas internas (código, templates, dependências, testes, migrações)
-RedirectMatch 404 "/(src|templates|vendor|tests|migrations)(/|$)"
+# Pastas internas (código, templates, dependências, testes, migrações, scripts de linha de comando)
+RedirectMatch 404 "/(src|templates|vendor|tests|migrations|bin)(/|$)"
 
 # Arquivos de projeto, documentação, backups e configuração (bootstrap.php não é uma página)
 <FilesMatch "(\.(md|sql|bak|log|ini|sh|json|lock|xml|dist)|^bootstrap\.php)$">

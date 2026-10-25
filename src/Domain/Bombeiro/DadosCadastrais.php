@@ -25,4 +25,9 @@ final readonly class DadosCadastrais
         public ?string $tamanhoCalcado = null,
     ) {
     }
+
+    public function vazio(): bool
+    {
+        return $this == new self(); // comparação campo a campo: todos nulos
+    }
 }

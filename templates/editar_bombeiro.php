@@ -5,19 +5,47 @@ declare(strict_types=1);
 /**
  * @var \Escala\Http\View\AjudanteDeView $v
  * @var int $id
- * @var array<string, string|bool> $b valores do formulário (do banco ou reenviados após erro)
+ * @var array<string, string|bool|null> $b valores do formulário (do banco ou reenviados após erro)
+ * @var array<string, string|null> $mascaras CPF e dados bancários mascarados (null = não cadastrado)
+ * @var bool $anonimizado
  * @var array{tipo: string, mensagem: string}|null $flash
  */
 $titulo = 'Editar bombeiro';
 $ativo = 'bombeiros';
+$comCsrf = true; // o botão "Mostrar" dos campos sigilosos chama a API
 $valor = static fn (string $campo): string => (string) ($b[$campo] ?? '');
-$campoTexto = static function (string $nome, string $rotulo, array $extras = []) use ($v, $valor): string {
+$atributosHtml = static function (array $extras) use ($v): string {
     $atributos = '';
     foreach ($extras as $atributo => $conteudo) {
         $atributos .= ' ' . $atributo . '="' . $v->e($conteudo) . '"';
     }
+    return $atributos;
+};
+$campoTexto = static function (string $nome, string $rotulo, array $extras = []) use ($v, $valor, $atributosHtml): string {
     return '<div class="campo"><label for="' . $nome . '">' . $v->e($rotulo) . '</label>'
-        . '<input type="text" id="' . $nome . '" name="' . $nome . '" value="' . $v->e($valor($nome)) . '"' . $atributos . '></div>';
+        . '<input type="text" id="' . $nome . '" name="' . $nome . '" value="' . $v->e($valor($nome)) . '"' . $atributosHtml($extras) . '></div>';
+};
+/*
+ * CPF e dados bancários: o valor real não vem no HTML. Com valor cadastrado, a tela mostra
+ * a máscara; "Mostrar" busca o valor na API e "Alterar" abre o campo (sem abrir, não é
+ * enviado e o valor gravado é mantido). Sem valor cadastrado, o campo já vem aberto.
+ */
+$campoSigiloso = static function (string $nome, string $rotulo, bool $multilinha, array $extras = []) use ($v, $b, $mascaras, $id, $atributosHtml): string {
+    $aberto = $b[$nome] !== null || $mascaras[$nome] === null;
+    $digitado = $v->e((string) $b[$nome]);
+    $atributos = ' id="' . $nome . '" name="' . $nome . '"' . $atributosHtml($extras) . ($aberto ? '' : ' hidden disabled');
+    $entrada = $multilinha ? "<textarea{$atributos}>{$digitado}</textarea>" : "<input type=\"text\"{$atributos} value=\"{$digitado}\">";
+
+    $html = '<div class="campo sigiloso" data-sigiloso="' . $nome . '" data-bombeiro-id="' . $id . '"><label for="' . $nome . '">' . $v->e($rotulo) . '</label>';
+    if (!$aberto) {
+        $html .= '<div class="sigiloso__atual">'
+            . '<span class="sigiloso__valor" data-sigiloso-valor data-mascara-exibida="' . $v->e($mascaras[$nome]) . '">' . $v->e($mascaras[$nome]) . '</span>'
+            . '<button type="button" class="botao botao--pequeno botao--fantasma" data-sigiloso-mostrar>' . $v->icone('olho') . ' <span>Mostrar</span></button>'
+            . '<button type="button" class="botao botao--pequeno" data-sigiloso-alterar>' . $v->icone('editar') . ' Alterar</button>'
+            . '</div>';
+    }
+    $dica = $aberto ? 'Guardado com criptografia.' : 'Guardado com criptografia. Para apagar, clique em Alterar e deixe em branco.';
+    return $html . $entrada . '<small>' . $dica . '</small></div>';
 };
 ?>
 <!DOCTYPE html>
@@ -39,6 +67,9 @@ $campoTexto = static function (string $nome, string $rotulo, array $extras = [])
     <?php if ($flash !== null): ?>
         <div class="aviso aviso--<?= $flash['tipo'] === 'success' ? 'sucesso' : 'erro' ?>" role="alert"><?= $v->e($flash['mensagem']) ?></div>
     <?php endif; ?>
+    <?php if ($anonimizado): ?>
+        <div class="aviso aviso--neutro" role="status">Os dados pessoais deste bombeiro foram apagados (LGPD). Só o nome continua, para o histórico de plantões.</div>
+    <?php endif; ?>
 
     <form class="cartao" action="editar_bombeiro.php?id=<?= $id ?>" method="post">
         <?= $v->csrfCampo() ?>
@@ -54,7 +85,7 @@ $campoTexto = static function (string $nome, string $rotulo, array $extras = [])
                         <input type="text" id="nome_guerra" name="nome_guerra" maxlength="60" value="<?= $v->e($valor('nome_guerra')) ?>">
                         <small>Destacado em negrito na planilha. Em branco, usa o último sobrenome.</small>
                     </div>
-                    <?= $campoTexto('cpf', 'CPF', ['data-mascara' => 'cpf', 'placeholder' => '000.000.000-00', 'inputmode' => 'numeric']) ?>
+                    <?= $campoSigiloso('cpf', 'CPF', false, ['data-mascara' => 'cpf', 'placeholder' => '000.000.000-00', 'inputmode' => 'numeric']) ?>
                     <div class="campo">
                         <label for="tipo">Tipo</label>
                         <select id="tipo" name="tipo" required>
@@ -119,10 +150,7 @@ $campoTexto = static function (string $nome, string $rotulo, array $extras = [])
 
             <section class="secao">
                 <h3>Dados bancários</h3>
-                <div class="campo">
-                    <label for="dados_bancarios">Banco, agência, conta e titular</label>
-                    <textarea id="dados_bancarios" name="dados_bancarios"><?= $v->e($valor('dados_bancarios')) ?></textarea>
-                </div>
+                <?= $campoSigiloso('dados_bancarios', 'Banco, agência, conta e titular', true) ?>
             </section>
         </div>
 
@@ -133,6 +161,7 @@ $campoTexto = static function (string $nome, string $rotulo, array $extras = [])
     </form>
 </main>
 
+<div id="toast-container" aria-live="polite"></div>
 <script src="<?= $v->recurso('js/script.js') ?>"></script>
 </body>
 </html>

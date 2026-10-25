@@ -38,6 +38,8 @@ final class TabelaDeRotas
             'exportacao' => new Rota(Pagina\ExportacaoController::class, $html, Acesso::Admin, $getPost),
             'exportacao_excel' => new Rota(Pagina\ExportacaoExcelController::class, $html, Acesso::Admin),
             'portal' => new Rota(Pagina\PortalController::class, $html, Acesso::Logado),
+            'meus_dados' => new Rota(Pagina\MeusDadosController::class, $html, Acesso::Logado),
+            'privacidade' => new Rota(Pagina\PrivacidadeController::class, $html, Acesso::Publico),
 
             // API (JSON)
             'api.consultar_dia' => new Rota(Api\ConsultarDiaController::class, $json, Acesso::Admin),
@@ -48,6 +50,7 @@ final class TabelaDeRotas
             'api.avancar_ordem' => new Rota(Api\AvancarOrdemController::class, $json, Acesso::Admin, $post),
             'api.concluir_tutorial' => new Rota(Api\ConcluirTutorialController::class, $json, Acesso::Admin, $post),
             'api.definir_inicio_ordem' => new Rota(Api\DefinirInicioOrdemController::class, $json, Acesso::Admin, $post),
+            'api.revelar_dado' => new Rota(Api\RevelarDadoPessoalController::class, $json, Acesso::Admin, $post),
         ];
     }
 }

@@ -40,6 +40,8 @@ final class AtualizarBombeiro
                 ativo: $entrada->ativo,
                 referenciaCiclo: $tipo === TipoBombeiro::Fixo ? $this->referenciaCiclo($entrada) : null,
                 dados: $this->dadosCadastrais($entrada, $atual),
+                inativadoEm: $atual->inativadoEm,
+                anonimizado: $atual->anonimizado,
             );
             $atualizado->validarParaGravacao();
             $this->bombeiros->atualizar($atualizado);
@@ -77,7 +79,7 @@ final class AtualizarBombeiro
             telefonePrincipal: Normalizador::opcional($entrada->telefonePrincipal),
             contatoEmergenciaNome: Normalizador::opcional($entrada->contatoEmergenciaNome),
             contatoEmergenciaFone: Normalizador::opcional($entrada->contatoEmergenciaFone),
-            dadosBancarios: Normalizador::opcional($entrada->dadosBancarios),
+            dadosBancarios: $entrada->dadosBancarios === null ? $atual->dados->dadosBancarios : Normalizador::opcional($entrada->dadosBancarios),
             tamanhoGandola: Normalizador::opcional($entrada->tamanhoGandola),
             tamanhoCamiseta: Normalizador::opcional($entrada->tamanhoCamiseta),
             tamanhoCalca: Normalizador::opcional($entrada->tamanhoCalca),
@@ -88,6 +90,9 @@ final class AtualizarBombeiro
     /** CPF só é validado quando muda; o já gravado é mantido mesmo fora do padrão. */
     private function cpf(?string $informado, ?Cpf $atual): ?Cpf
     {
+        if ($informado === null) {
+            return $atual; // campo não enviado: a tela não abriu o CPF para edição
+        }
         $informado = Normalizador::opcional($informado);
         if ($informado === null) {
             return null;

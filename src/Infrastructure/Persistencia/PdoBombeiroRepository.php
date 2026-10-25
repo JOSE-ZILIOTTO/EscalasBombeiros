@@ -12,6 +12,7 @@ use Escala\Domain\Bombeiro\TipoBombeiro;
 use Escala\Domain\Escala\DataEscala;
 use Escala\Domain\Escala\ReferenciaCicloFixo;
 use Escala\Domain\Excecao\DadoInvalido;
+use Escala\Infrastructure\Seguranca\CifraDeDados;
 use PDO;
 use RuntimeException;
 
@@ -20,9 +21,10 @@ final class PdoBombeiroRepository implements BombeiroRepository
     private const COLUNAS = 'id, nome_completo, nome_guerra, cpf, tipo, ativo, fixo_ref_data, fixo_ref_dia_ciclo,
         endereco_rua, endereco_numero, endereco_bairro, endereco_cidade, endereco_uf, endereco_cep,
         telefone_principal, contato_emergencia_nome, contato_emergencia_fone, dados_bancarios,
-        tamanho_gandola, tamanho_camiseta, tamanho_calca, tamanho_calcado';
+        tamanho_gandola, tamanho_camiseta, tamanho_calca, tamanho_calcado, inativado_em, anonimizado_em';
 
-    public function __construct(private readonly PDO $pdo)
+    /** @param CifraDeDados $cifra CPF e dados bancários são gravados criptografados */
+    public function __construct(private readonly PDO $pdo, private readonly CifraDeDados $cifra)
     {
     }
 
@@ -84,10 +86,46 @@ final class PdoBombeiroRepository implements BombeiroRepository
                 telefone_principal = :telefone_principal, contato_emergencia_nome = :contato_emergencia_nome,
                 contato_emergencia_fone = :contato_emergencia_fone, dados_bancarios = :dados_bancarios,
                 tamanho_gandola = :tamanho_gandola, tamanho_camiseta = :tamanho_camiseta,
-                tamanho_calca = :tamanho_calca, tamanho_calcado = :tamanho_calcado
+                tamanho_calca = :tamanho_calca, tamanho_calcado = :tamanho_calcado,
+                inativado_em = CASE WHEN :inativo = 1 THEN COALESCE(inativado_em, CURRENT_DATE) END,
+                anonimizado_em = CASE WHEN :anonimizado = 1 THEN COALESCE(anonimizado_em, NOW()) ELSE anonimizado_em END
              WHERE id = :id'
         );
-        $stmt->execute([...$this->parametros($bombeiro), 'id' => $bombeiro->id]);
+        $stmt->execute([
+            ...$this->parametros($bombeiro),
+            'inativo' => $bombeiro->ativo ? 0 : 1,
+            'anonimizado' => $bombeiro->anonimizado ? 1 : 0,
+            'id' => $bombeiro->id,
+        ]);
+    }
+
+    /**
+     * Criptografa CPF e dados bancários gravados antes da criptografia existir.
+     * Usado só por bin/proteger_dados_antigos.php; pode rodar mais de uma vez.
+     *
+     * @return int quantos cadastros foram regravados
+     */
+    public function protegerDadosAntigos(): int
+    {
+        $linhas = $this->pdo->query('SELECT id, cpf, dados_bancarios FROM bombeiros')->fetchAll();
+        $stmt = $this->pdo->prepare('UPDATE bombeiros SET cpf = :cpf, dados_bancarios = :dados_bancarios WHERE id = :id');
+        $regravados = 0;
+        foreach ($linhas as $l) {
+            $antigos = array_filter(
+                [$l['cpf'], $l['dados_bancarios']],
+                fn (mixed $v): bool => is_string($v) && $v !== '' && !$this->cifra->estaCifrado($v),
+            );
+            if ($antigos === []) {
+                continue;
+            }
+            $stmt->execute([
+                'cpf' => $this->cifra->cifrar($this->cifra->decifrar($l['cpf'])),
+                'dados_bancarios' => $this->cifra->cifrar($this->cifra->decifrar($l['dados_bancarios'])),
+                'id' => (int) $l['id'],
+            ]);
+            $regravados++;
+        }
+        return $regravados;
     }
 
     /** @return list<Bombeiro> */
@@ -101,6 +139,7 @@ final class PdoBombeiroRepository implements BombeiroRepository
     /** @param array<string, mixed> $l */
     private function hidratar(array $l): Bombeiro
     {
+        $cpf = $this->cifra->decifrar($l['cpf']);
         return new Bombeiro(
             id: (int) $l['id'],
             nomeCompleto: (string) $l['nome_completo'],
@@ -109,7 +148,7 @@ final class PdoBombeiroRepository implements BombeiroRepository
             ativo: (int) $l['ativo'] === 1,
             referenciaCiclo: $this->referencia($l['fixo_ref_data'], $l['fixo_ref_dia_ciclo']),
             dados: new DadosCadastrais(
-                cpf: ($l['cpf'] ?? '') !== '' ? Cpf::doBanco((string) $l['cpf']) : null,
+                cpf: $cpf !== null && $cpf !== '' ? Cpf::doBanco($cpf) : null,
                 enderecoRua: $l['endereco_rua'],
                 enderecoNumero: $l['endereco_numero'],
                 enderecoBairro: $l['endereco_bairro'],
@@ -119,12 +158,14 @@ final class PdoBombeiroRepository implements BombeiroRepository
                 telefonePrincipal: $l['telefone_principal'],
                 contatoEmergenciaNome: $l['contato_emergencia_nome'],
                 contatoEmergenciaFone: $l['contato_emergencia_fone'],
-                dadosBancarios: $l['dados_bancarios'],
+                dadosBancarios: $this->cifra->decifrar($l['dados_bancarios']),
                 tamanhoGandola: $l['tamanho_gandola'],
                 tamanhoCamiseta: $l['tamanho_camiseta'],
                 tamanhoCalca: $l['tamanho_calca'],
                 tamanhoCalcado: $l['tamanho_calcado'],
             ),
+            inativadoEm: $l['inativado_em'] !== null ? DataEscala::deTexto(substr((string) $l['inativado_em'], 0, 10)) : null,
+            anonimizado: $l['anonimizado_em'] !== null,
         );
     }
 
@@ -147,7 +188,7 @@ final class PdoBombeiroRepository implements BombeiroRepository
         return [
             'nome_completo' => $b->nomeCompleto,
             'nome_guerra' => $b->nomeGuerra,
-            'cpf' => $d->cpf?->formatado,
+            'cpf' => $this->cifra->cifrar($d->cpf?->formatado),
             'tipo' => $b->tipo->value,
             'ativo' => $b->ativo ? 1 : 0,
             'fixo_ref_data' => $b->referenciaCiclo?->data->emTexto(),
@@ -161,7 +202,7 @@ final class PdoBombeiroRepository implements BombeiroRepository
             'telefone_principal' => $d->telefonePrincipal,
             'contato_emergencia_nome' => $d->contatoEmergenciaNome,
             'contato_emergencia_fone' => $d->contatoEmergenciaFone,
-            'dados_bancarios' => $d->dadosBancarios,
+            'dados_bancarios' => $this->cifra->cifrar($d->dadosBancarios),
             'tamanho_gandola' => $d->tamanhoGandola,
             'tamanho_camiseta' => $d->tamanhoCamiseta,
             'tamanho_calca' => $d->tamanhoCalca,

@@ -2,6 +2,9 @@
 -- Rode UMA vez em cada banco (local e produção), depois de fazer backup.
 -- Compatível com MariaDB 10.4+ / MySQL 8.
 
+-- sem isto, o cliente mysql do Windows lê o arquivo como cp850 e grava acentos corrompidos
+SET NAMES utf8mb4;
+
 -- 1) Turno I_SUB (substituto integral do Fixo).
 --    O código já usava 'I_SUB', mas o ENUM não aceitava: o MySQL gravava turno vazio ('').
 ALTER TABLE plantoes

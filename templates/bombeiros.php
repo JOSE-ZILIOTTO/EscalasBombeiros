@@ -5,6 +5,8 @@ declare(strict_types=1);
 /**
  * @var \Escala\Http\View\AjudanteDeView $v
  * @var list<\Escala\Domain\Bombeiro\Bombeiro> $bombeiros
+ * @var list<int|null> $vencidos ids dos inativos com prazo de retenção vencido e dados ainda guardados
+ * @var int $anosDeRetencao
  * @var array{tipo: string, mensagem: string}|null $flash
  */
 $titulo = 'Bombeiros';
@@ -29,6 +31,20 @@ $totalAtivos = count(array_filter($bombeiros, static fn ($b): bool => $b->ativo)
 
     <?php if ($flash !== null): ?>
         <div class="aviso aviso--<?= $flash['tipo'] === 'success' ? 'sucesso' : 'erro' ?>" role="status"><?= $v->e($flash['mensagem']) ?></div>
+    <?php endif; ?>
+
+    <?php if ($vencidos !== []): ?>
+        <div class="aviso aviso--alerta aviso--acao" role="status">
+            <span>
+                <?= count($vencidos) === 1 ? '1 bombeiro inativo' : count($vencidos) . ' bombeiros inativos' ?> há mais de <?= $anosDeRetencao ?> anos
+                ainda <?= count($vencidos) === 1 ? 'tem' : 'têm' ?> dados pessoais guardados. Pelo prazo de retenção, eles devem ser apagados.
+            </span>
+            <form action="bombeiros.php" method="post" data-confirmar="Apagar CPF, endereço, contatos, dados bancários e uniforme dos inativos com prazo vencido? O nome continua no histórico de plantões. Não dá para desfazer.">
+                <?= $v->csrfCampo() ?>
+                <input type="hidden" name="anonimizar_vencidos" value="1">
+                <button type="submit" class="botao botao--pequeno botao--perigo"><?= $v->icone('apagar') ?> Apagar dados vencidos</button>
+            </form>
+        </div>
     <?php endif; ?>
 
     <section class="cartao">
@@ -59,7 +75,7 @@ $totalAtivos = count(array_filter($bombeiros, static fn ($b): bool => $b->ativo)
         <?php if ($bombeiros === []): ?>
             <div class="cartao__corpo mudo">Nenhum bombeiro cadastrado.</div>
         <?php else: ?>
-            <table class="tabela">
+            <table class="tabela tabela--cartoes">
                 <thead>
                     <tr>
                         <th class="num">ID</th>
@@ -74,12 +90,12 @@ $totalAtivos = count(array_filter($bombeiros, static fn ($b): bool => $b->ativo)
                     <?php foreach ($bombeiros as $b): ?>
                         <tr class="<?= $b->ativo ? '' : 'linha-inativa' ?>">
                             <td class="num"><?= (int) $b->id ?></td>
-                            <td>
+                            <td class="tabela__titulo">
                                 <?= $v->e($b->nomeCompleto) ?>
                                 <?php if ($b->nomeGuerra !== null): ?><span class="mudo"> · <?= $v->e($b->nomeGuerra) ?></span><?php endif; ?>
                             </td>
-                            <td><?= $b->ehFixo() ? $v->etiquetaFixo() : '<span class="turno turno--fixo">BC</span>' ?></td>
-                            <td class="mudo">
+                            <td data-rotulo="Tipo"><?= $b->ehFixo() ? $v->etiquetaFixo() : '<span class="turno turno--fixo">BC</span>' ?></td>
+                            <td class="mudo" data-rotulo="Ref. do ciclo">
                                 <?php if ($b->ehFixo() && $b->referenciaCiclo !== null): ?>
                                     <?= $v->e($v->dataBr($b->referenciaCiclo->data->emTexto())) ?> · dia <?= $b->referenciaCiclo->diaDoCiclo ?>
                                 <?php elseif ($b->ehFixo()): ?>
@@ -88,7 +104,14 @@ $totalAtivos = count(array_filter($bombeiros, static fn ($b): bool => $b->ativo)
                                     —
                                 <?php endif; ?>
                             </td>
-                            <td><?= $b->ativo ? '<span class="selo selo--ok">Ativo</span>' : '<span class="selo">Inativo</span>' ?></td>
+                            <td data-rotulo="Situação">
+                                <?= $b->ativo ? '<span class="selo selo--ok">Ativo</span>' : '<span class="selo">Inativo</span>' ?>
+                                <?php if ($b->anonimizado): ?>
+                                    <span class="selo selo--neutro" title="Dados pessoais apagados (LGPD)">dados apagados</span>
+                                <?php elseif (in_array($b->id, $vencidos, true)): ?>
+                                    <span class="selo selo--alerta" title="Prazo de retenção de <?= $anosDeRetencao ?> anos vencido">prazo vencido</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="acoes">
                                 <a class="botao botao--pequeno" href="editar_bombeiro.php?id=<?= (int) $b->id ?>"><?= $v->icone('editar') ?> Editar</a>
                                 <?php if ($b->ativo): ?>
@@ -96,6 +119,12 @@ $totalAtivos = count(array_filter($bombeiros, static fn ($b): bool => $b->ativo)
                                         <?= $v->csrfCampo() ?>
                                         <input type="hidden" name="delete_bombeiro_id" value="<?= (int) $b->id ?>">
                                         <button type="submit" class="botao botao--pequeno botao--perigo"><?= $v->icone('inativar') ?> Inativar</button>
+                                    </form>
+                                <?php elseif ($b->temDadosPessoais()): ?>
+                                    <form action="bombeiros.php" method="post" data-confirmar="Apagar os dados pessoais de <?= $v->e($b->nomeCompleto) ?> (CPF, endereço, contatos, banco e uniforme)? O nome continua no histórico de plantões. Não dá para desfazer.">
+                                        <?= $v->csrfCampo() ?>
+                                        <input type="hidden" name="anonimizar_bombeiro_id" value="<?= (int) $b->id ?>">
+                                        <button type="submit" class="botao botao--pequeno botao--perigo" title="Direito de eliminação (LGPD)"><?= $v->icone('apagar') ?> Apagar dados</button>
                                     </form>
                                 <?php endif; ?>
                             </td>

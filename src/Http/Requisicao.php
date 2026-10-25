@@ -20,6 +20,8 @@ final readonly class Requisicao
         private array $cabecalhos = [],
         public string $ip = '',
         private array $atributos = [],
+        /** caminho + query, como chegou (REQUEST_URI) */
+        public string $uri = '',
     ) {
     }
 
@@ -37,6 +39,8 @@ final readonly class Requisicao
             $_POST,
             $cabecalhos,
             (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            [],
+            (string) ($_SERVER['REQUEST_URI'] ?? '/'),
         );
     }
 
@@ -89,7 +93,7 @@ final readonly class Requisicao
 
     public function comAtributo(string $nome, mixed $valor): self
     {
-        return new self($this->metodo, $this->consulta, $this->corpo, $this->cabecalhos, $this->ip, [...$this->atributos, $nome => $valor]);
+        return new self($this->metodo, $this->consulta, $this->corpo, $this->cabecalhos, $this->ip, [...$this->atributos, $nome => $valor], $this->uri);
     }
 
     /** @return array<string, mixed> para reexibir um formulário após erro */

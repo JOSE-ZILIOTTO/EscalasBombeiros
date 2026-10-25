@@ -23,6 +23,9 @@ final class EditarBombeiroController implements Manipulador
 {
     private const LISTA = 'bombeiros.php';
 
+    /** Campos que não vão para o HTML: a tela mostra a máscara e busca o valor só sob demanda. */
+    public const CAMPOS_SIGILOSOS = ['cpf', 'dados_bancarios'];
+
     /** Campos de texto do formulário, com o mesmo nome das colunas do banco. */
     private const CAMPOS_TEXTO = [
         'nome_completo', 'nome_guerra', 'cpf', 'tipo', 'fixo_ref_data', 'fixo_ref_dia_ciclo',
@@ -57,7 +60,7 @@ final class EditarBombeiroController implements Manipulador
             $this->flash->erro($erro->getMessage());
             return new Redirecionamento(self::LISTA);
         }
-        return $this->formulario($id, $this->valoresDe($bombeiro), $this->flash->consumir());
+        return $this->formulario($bombeiro, $this->valoresDe($bombeiro), $this->flash->consumir());
     }
 
     private function salvar(int $id, Requisicao $requisicao): Resposta
@@ -94,10 +97,13 @@ final class EditarBombeiroController implements Manipulador
                 tamanhoCalcado: $campo('tamanho_calcado'),
             ));
         } catch (ExcecaoDeDominio $erro) {
-            // reexibe o que foi digitado para o usuário só corrigir o campo com problema
-            $valores = array_map(static fn (string $nome): string => $campo($nome) ?? '', array_combine(self::CAMPOS_TEXTO, self::CAMPOS_TEXTO));
+            // reexibe o que foi digitado para o usuário só corrigir o campo com problema;
+            // um campo sigiloso que não foi aberto para edição continua fechado (null)
+            $valores = array_map(static fn (string $nome): ?string => $campo($nome), array_combine(self::CAMPOS_TEXTO, self::CAMPOS_TEXTO));
+            $valores = array_map(static fn (?string $v): ?string => $v ?? '', array_diff_key($valores, array_flip(self::CAMPOS_SIGILOSOS)))
+                + array_intersect_key($valores, array_flip(self::CAMPOS_SIGILOSOS));
             $valores['ativo'] = $requisicao->marcado('ativo');
-            return $this->formulario($id, $valores, ['tipo' => 'error', 'mensagem' => $erro->getMessage()], 422);
+            return $this->formulario($this->consultar->buscar($id), $valores, ['tipo' => 'error', 'mensagem' => $erro->getMessage()], 422);
         }
 
         $this->flash->sucesso('Bombeiro atualizado com sucesso!');
@@ -105,25 +111,35 @@ final class EditarBombeiroController implements Manipulador
     }
 
     /**
-     * @param array<string, string|bool> $valores
+     * @param array<string, string|bool|null> $valores
      * @param array{tipo: string, mensagem: string}|null $flash
      */
-    private function formulario(int $id, array $valores, ?array $flash, int $status = 200): RespostaHtml
+    private function formulario(Bombeiro $bombeiro, array $valores, ?array $flash, int $status = 200): RespostaHtml
     {
+        $d = $bombeiro->dados;
         return new RespostaHtml(
-            $this->templates->renderizar('editar_bombeiro', ['id' => $id, 'b' => $valores, 'flash' => $flash]),
+            $this->templates->renderizar('editar_bombeiro', [
+                'id' => (int) $bombeiro->id,
+                'b' => $valores,
+                'mascaras' => [
+                    'cpf' => $d->cpf?->mascarado(),
+                    'dados_bancarios' => $d->dadosBancarios === null ? null : '•••••• ' . mb_substr($d->dadosBancarios, -4),
+                ],
+                'anonimizado' => $bombeiro->anonimizado,
+                'flash' => $flash,
+            ]),
             $status,
         );
     }
 
-    /** @return array<string, string|bool> */
+    /** @return array<string, string|bool|null> CPF e dados bancários ficam de fora (null = campo fechado) */
     private function valoresDe(Bombeiro $bombeiro): array
     {
         $d = $bombeiro->dados;
         return [
             'nome_completo' => $bombeiro->nomeCompleto,
             'nome_guerra' => (string) $bombeiro->nomeGuerra,
-            'cpf' => (string) $d->cpf?->formatado,
+            'cpf' => null,
             'tipo' => $bombeiro->tipo->value,
             'ativo' => $bombeiro->ativo,
             'fixo_ref_data' => (string) $bombeiro->referenciaCiclo?->data->emTexto(),
@@ -137,7 +153,7 @@ final class EditarBombeiroController implements Manipulador
             'telefone_principal' => (string) $d->telefonePrincipal,
             'contato_emergencia_nome' => (string) $d->contatoEmergenciaNome,
             'contato_emergencia_fone' => (string) $d->contatoEmergenciaFone,
-            'dados_bancarios' => (string) $d->dadosBancarios,
+            'dados_bancarios' => null,
             'tamanho_gandola' => (string) $d->tamanhoGandola,
             'tamanho_camiseta' => (string) $d->tamanhoCamiseta,
             'tamanho_calca' => (string) $d->tamanhoCalca,

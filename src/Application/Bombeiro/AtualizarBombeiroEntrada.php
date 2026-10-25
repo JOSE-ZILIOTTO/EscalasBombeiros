@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Escala\Application\Bombeiro;
 
-/** Campos do formulário "Editar Bombeiro", ainda como texto bruto. */
+/**
+ * Campos do formulário "Editar Bombeiro", ainda como texto bruto.
+ * CPF e dados bancários ficam ocultos na tela: null = não enviado (mantém o atual), '' = apagar.
+ */
 final readonly class AtualizarBombeiroEntrada
 {
     public function __construct(

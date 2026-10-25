@@ -124,6 +124,57 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // Edição: CPF e dados bancários chegam mascarados; o valor real só vem da API
+  // quando o administrador pede, e o campo só é enviado depois de "Alterar"
+  // ---------------------------------------------------------------------------
+  document.querySelectorAll('[data-sigiloso]').forEach((bloco) => {
+    const exibicao = bloco.querySelector('[data-sigiloso-valor]');
+    const mostrar = bloco.querySelector('[data-sigiloso-mostrar]');
+    const alterar = bloco.querySelector('[data-sigiloso-alterar]');
+    const entrada = bloco.querySelector('input, textarea');
+    if (!exibicao || !mostrar || !alterar || !entrada) return;
+    let revelado = null;
+
+    const buscar = async () => {
+      if (revelado === null) {
+        const resposta = await enviar('api/api_revelar_dado.php', { bombeiro_id: bloco.dataset.bombeiroId, campo: bloco.dataset.sigiloso });
+        revelado = resposta.valor;
+      }
+      return revelado;
+    };
+
+    mostrar.addEventListener('click', async () => {
+      const rotulo = mostrar.querySelector('span');
+      if (exibicao.classList.contains('revelado')) {
+        exibicao.textContent = exibicao.dataset.mascaraExibida;
+        exibicao.classList.remove('revelado');
+        rotulo.textContent = 'Mostrar';
+        return;
+      }
+      try {
+        exibicao.textContent = await buscar();
+        exibicao.classList.add('revelado');
+        rotulo.textContent = 'Ocultar';
+      } catch (erro) {
+        avisar(erro.message, 'error');
+      }
+    });
+
+    alterar.addEventListener('click', async () => {
+      try {
+        entrada.value = await buscar(); // abre com o valor atual para corrigir em vez de redigitar
+      } catch (erro) {
+        avisar(erro.message, 'error');
+        return;
+      }
+      bloco.querySelector('.sigiloso__atual').hidden = true;
+      entrada.hidden = false;
+      entrada.disabled = false;
+      entrada.focus();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Painel: modal do dia
   // ---------------------------------------------------------------------------
   const modal = document.getElementById('detailsModal');
